@@ -3,6 +3,7 @@ import type {Request, Response} from 'express';
 import type { TCreateShortUrl } from "../../validators/urlServices.schemas.js";
 import { nanoid } from 'nanoid'
 import { Url } from "../../models/url.js";
+import { initlializeRedisClient } from "../../utils/redisClient.js";
 
 export  async function createShortUrl(req: Request, res: Response) {
 
@@ -39,6 +40,8 @@ export async function redirectToOriginalUrl(req: Request, res: Response) {
     const { id } = req.params;
 
 
+    const client = await initlializeRedisClient()
+  console.log("here");
   const urlEntry = await Url.findOne({ shortUrl:  `${process.env.DOMAINE_NAME}/${id}` }).lean();
 
   if (!urlEntry?.originalUrl) {
@@ -62,7 +65,6 @@ export async function updateUrl(req: Request, res: Response) {
     const { id } = req.params;
   const { url } = req.body as TCreateShortUrl;
 
-  console.log("here");
   const existUrl = await Url.findOneAndUpdate(
     {
       shortUrl: `${process.env.DOMAINE_NAME}/${id}`

@@ -4,6 +4,8 @@ import type { TCreateShortUrl } from "../../validators/urlServices.schemas.js";
 import { nanoid } from 'nanoid'
 import { Url } from "../../models/url.js";
 import { initlializeRedisClient } from "../../utils/redisClient.js";
+import { deleteFromJson, getFromJson, setToJSon } from "../../utils/querys.js";
+import { genetateKeys } from "../../utils/key.js";
 
 export  async function createShortUrl(req: Request, res: Response) {
 
@@ -40,9 +42,30 @@ export async function redirectToOriginalUrl(req: Request, res: Response) {
     const { id } = req.params;
 
 
-    const client = await initlializeRedisClient()
-  console.log("here");
-  const urlEntry = await Url.findOne({ shortUrl:  `${process.env.DOMAINE_NAME}/${id}` }).lean();
+  if(!id){
+    return errorResponse(res, "url is required", 400)
+  }
+  // const client = await initlializeRedisClient()
+  const data =  await getFromJson<Record<string, {
+  [key:string]  : string
+  }>>(`base:${id}`)
+  let   urlEntry = null
+  if(data)
+  {
+    console.log(data)
+    urlEntry = data?.data
+    console.log("Caching HIT")
+  }
+  else{
+    urlEntry = await Url.findOne({ shortUrl:  `${process.env.DOMAINE_NAME}/${id}` }).lean();
+    const key = genetateKeys(id as string)
+    const data = await setToJSon(key, {
+      "data": urlEntry
+    })
+
+    console.log("Caching SET")
+
+  }
 
   if (!urlEntry?.originalUrl) {
     return errorResponse(res, "Short URL not found", 404);
@@ -82,6 +105,7 @@ export async function updateUrl(req: Request, res: Response) {
   if (!existUrl) {
     return errorResponse(res, "Short URL not found", 404);
   }
+  await deleteFromJson(`base:${id}`)
   return successResponse(res, { shortUrl: existUrl.shortUrl }, 200, "Short URL updated successfully");
 }catch(err)
 {
@@ -110,6 +134,7 @@ export async function deleteUrl(req: Request, res: Response) {
     if (!existUrl) {
       return errorResponse(res, "Short URL not found", 404);
     }
+    await deleteFromJson(`base:${id}`)
     return successResponse(res, { shortUrl: existUrl.shortUrl }, 200, "Short URL deleted successfully");
   }catch(error)
   {

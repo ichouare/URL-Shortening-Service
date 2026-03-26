@@ -3,6 +3,8 @@ import {createClient, type RedisClientType } from 'redis'
 
 let client : RedisClientType | null = null
 
+// const redisUrl = `redis://${process.env.PASS}@${process.env.HOST}:${process.env.PORT}`
+
 
 export async function initlializeRedisClient() {
   if(!client)
@@ -18,12 +20,9 @@ export async function initlializeRedisClient() {
     client.on("connect", () => {
       console.log("redis is client is connect succesfully")
     })
-
-
-
     await client.connect()
 
+  }
 
     return client;
-  }
 }
